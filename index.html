@@ -1144,6 +1144,8 @@ function render(){
   // Guardar copia espejo de los datos (protección contra borrado) — siempre, aunque el dibujo falle
   try{snapshotShadow();}catch(e){}
   try{snapshotIDB();}catch(e){}
+  // Programar el respaldo automático a Descargas (con espera de inactividad, ver más abajo)
+  try{if(typeof programarAutoBackup==="function")programarAutoBackup();}catch(e){}
 }
 function renderTab(t){
   try{
@@ -3378,6 +3380,7 @@ function svgIcon(name,color,size){
     case"bell":return wrap(`<path d="M12 3a5 5 0 0 0-5 5v3.5c0 .9-.4 1.8-1 2.5l-.5.6c-.6.7-.1 1.9.9 1.9h11.2c1 0 1.5-1.2.9-1.9l-.5-.6c-.6-.7-1-1.6-1-2.5V8a5 5 0 0 0-5-5Z" stroke="${c}" stroke-width="${sw}" stroke-linejoin="round"/><path d="M10 19a2 2 0 0 0 4 0" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
     case"calendar":return wrap(`<rect x="3.5" y="5" width="17" height="15" rx="3" stroke="${c}" stroke-width="${sw}"/><path d="M3.5 9.5h17M8 3v3.5M16 3v3.5" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/><circle cx="8" cy="13.5" r="1.1" fill="${c}"/><circle cx="12" cy="13.5" r="1.1" fill="${c}"/><circle cx="16" cy="13.5" r="1.1" fill="${c}"/>`);
     case"save":return wrap(`<path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="${c}" stroke-width="${sw}" stroke-linejoin="round"/><path d="M8 4v5h7V4M8 20v-6h8v6" stroke="${c}" stroke-width="${sw}" stroke-linejoin="round"/>`);
+    case"share":return wrap(`<path d="M12 4v12" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/><path d="M7 8l5-5 5 5" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`);
     case"briefcase":return wrap(`<rect x="3" y="7.5" width="18" height="12" rx="2.5" stroke="${c}" stroke-width="${sw}"/><path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5M3 12.5h18" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
     case"trophy":return wrap(`<path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" stroke="${c}" stroke-width="${sw}" stroke-linejoin="round"/><path d="M7 5.5H4.5a1 1 0 0 0-1 1V8a3 3 0 0 0 3 3M17 5.5h2.5a1 1 0 0 1 1 1V8a3 3 0 0 1-3 3M12 13v3M9 20h6M10 20v-1.5a2 2 0 0 1 4 0V20" stroke="${c}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`);
     case"users":return wrap(`<circle cx="9" cy="8" r="3" stroke="${c}" stroke-width="${sw}"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 6.5a3 3 0 0 1 0 5.8M16.5 14.5a5.5 5.5 0 0 1 4 4.5" stroke="${c}" stroke-width="${sw}" stroke-linecap="round"/>`);
@@ -4051,25 +4054,37 @@ window.openRespaldo=function(){
     </div>
     ${r.sizeTxt.includes("MB")&&parseFloat(r.sizeTxt)>2?`<div style="font-size:12px;color:#FF9F0A;line-height:1.5;margin-bottom:16px;padding:12px 14px;background:rgba(255,159,10,0.1);border-radius:12px;display:flex;gap:9px;align-items:flex-start"><span style="flex-shrink:0;margin-top:1px">${svgIcon("warning","#FF9F0A",16)}</span><span>Tu respaldo es grande por las fotos. Si al pegarlo en Notas se traba, considera guardar las evidencias importantes también en tu galería del iPhone como respaldo extra.</span></div>`:""}
 
-    <div style="font-size:12px;color:var(--txt2);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Guardar respaldo</div>
+    <div style="font-size:12px;color:var(--txt2);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">☁️ Recomendado: guardar en Google Drive</div>
     <div style="font-size:13px;color:var(--txt2);line-height:1.5;margin-bottom:12px">
-      Toca el botón, abre la app <b>Notas</b> y pega. Ese texto es tu copia de seguridad completa.
+      Manda tu respaldo como archivo a <b>Google Drive</b> (o WhatsApp, correo, lo que prefieras). Así queda fuera del teléfono — sobrevive aunque borres la app o cambies de celular.
+    </div>
+    <button class="sbtn" style="background:#0A84FF;margin-bottom:20px" onclick="compartirBackup()">
+      <span style="display:inline-flex;align-items:center;gap:9px">${svgIcon("share","#fff",20)}Compartir respaldo</span>
+    </button>
+
+    <div style="font-size:12px;color:var(--txt2);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Copiar y pegar (alternativa)</div>
+    <div style="font-size:13px;color:var(--txt2);line-height:1.5;margin-bottom:12px">
+      Toca el botón, abre la app <b>Notas / Keep</b> y pega. ${r.sizeTxt.includes("MB")?"<b style=\"color:#FF9F0A\">Tu respaldo es grande por las fotos — si al pegar se traba, usa mejor \"Compartir\" de arriba.</b>":"Ese texto es tu copia de seguridad completa."}
     </div>
     <button class="sbtn-soft" style="margin-bottom:20px;color:#32D74B" onclick="copyBackup()">
-      <span style="display:inline-flex;align-items:center;gap:9px">${svgIcon("clipboard","#32D74B",20)}Copiar respaldo para pegar en Notas</span>
+      <span style="display:inline-flex;align-items:center;gap:9px">${svgIcon("clipboard","#32D74B",20)}Copiar respaldo para pegar</span>
     </button>
 
     <div style="font-size:12px;color:var(--txt2);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Restaurar respaldo</div>
     <div style="font-size:13px;color:var(--txt2);line-height:1.5;margin-bottom:12px">
-      Copia el texto de tu nota de respaldo y toca el botón para recuperar todos tus datos.
+      Pega o abre el archivo de tu respaldo para recuperar todos tus datos.
     </div>
-    <button class="sbtn-soft" style="color:#7D7AFF" onclick="pasteRestore()">
+    <button class="sbtn-soft" style="color:#7D7AFF;margin-bottom:10px" onclick="pasteRestore()">
       <span style="display:inline-flex;align-items:center;gap:9px">${svgIcon("inbox","#7D7AFF",20)}Pegar respaldo y restaurar</span>
     </button>
+    <input type="file" id="restore-file-input" accept=".json,application/json" style="display:none" onchange="restaurarDesdeArchivo(event)">
+    <button class="sbtn-soft" style="color:#7D7AFF" onclick="document.getElementById('restore-file-input').click()">
+      <span style="display:inline-flex;align-items:center;gap:9px">${svgIcon("save","#7D7AFF",20)}Abrir archivo de respaldo</span>
+    </button>
 
-    <div style="font-size:12px;color:var(--txt2);line-height:1.5;margin-top:20px;padding:14px;background:rgba(118,118,128,0.12);border-radius:14px;display:flex;gap:10px;align-items:flex-start">
-      <span style="flex-shrink:0;margin-top:1px">${svgIcon("save","#8E8E93",17)}</span>
-      <span>Guarda el respaldo en una nota de tu iPhone. Aunque cambies de versión o de URL, solo copias ese texto y lo pegas aquí para recuperar todo.</span>
+    <div style="font-size:12px;color:var(--txt2);line-height:1.5;margin-top:20px;padding:14px;background:rgba(48,209,88,0.1);border-radius:14px;display:flex;gap:10px;align-items:flex-start">
+      <span style="flex-shrink:0;margin-top:1px">${svgIcon("save","#30D158",17)}</span>
+      <span><b>Respaldo automático activado (cada 24h):</b> se guarda solo en <b>Descargas/App Finanzas/Respaldo App Finanzas</b>. Esa carpeta es del sistema, no de Opera: aunque borres la app, esos archivos siguen en tu teléfono.</span>
     </div>`);
 };
 window.copyBackup=async function(){
@@ -4092,6 +4107,86 @@ window.copyBackup=async function(){
     showToast(ok?"✅ Copiado"+aviso+" · pégalo en Notas":"⚠ No se pudo copiar");
   }catch(err2){showToast("⚠ No se pudo copiar");}
 };
+function nombreArchivoBackup(){
+  const d=new Date();const p=n=>String(n).padStart(2,"0");
+  return "finanzas-respaldo-"+d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+".json";
+}
+// Nombre CON RUTA para el respaldo automático: crea la carpeta
+// "App Finanzas/Respaldo App Finanzas" dentro de Descargas (es la carpeta más
+// cercana a la que Mauro ya tiene — un sitio web no puede escribir fuera de
+// Descargas, pero SÍ puede crear subcarpetas dentro de ella automáticamente).
+function rutaArchivoAutoBackup(){
+  return "App Finanzas/Respaldo App Finanzas/"+nombreArchivoBackup();
+}
+// Compartir el respaldo como ARCHIVO (sin límite de caracteres, a diferencia de pegarlo
+// en una nota). Abre el menú nativo de Android: Google Drive, WhatsApp, correo, etc.
+// Si el teléfono no soporta compartir archivos, se descarga directo a Descargas.
+window.compartirBackup=async function(){
+  const json=buildBackupJSON();
+  const nombre=nombreArchivoBackup();
+  try{
+    const file=new File([json],nombre,{type:"application/json"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:"Respaldo de Finanzas",text:"Mi respaldo de la app Finanzas"});
+      showToast("✅ Respaldo compartido");
+      return;
+    }
+  }catch(err){
+    if(err&&err.name==="AbortError")return; // el usuario canceló el menú, no es error
+  }
+  // Si no se puede compartir directo, se descarga el archivo (el usuario lo sube donde quiera)
+  descargarBackupArchivo(nombre,json);
+  showToast("✅ Respaldo descargado · guárdalo en Google Drive desde Archivos");
+};
+// Descarga silenciosa de un archivo de respaldo (usado por el auto-respaldo y como
+// respaldo del botón Compartir cuando el teléfono no soporta compartir archivos).
+function descargarBackupArchivo(nombre,json){
+  try{
+    const blob=new Blob([json],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=nombre;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  }catch(e){}
+}
+// Restaurar desde un archivo .json elegido con el explorador de archivos del teléfono
+window.restaurarDesdeArchivo=function(ev){
+  const file=ev.target.files&&ev.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      aplicarRestore(JSON.parse(e.target.result));
+      closeModal();render();renderNotes();
+      showToast("✅ Datos restaurados desde el archivo");
+    }catch(err){showToast("⚠ Ese archivo no es un respaldo válido");}
+  };
+  reader.onerror=()=>showToast("⚠ No se pudo leer el archivo");
+  reader.readAsText(file);
+};
+// ── Respaldo automático silencioso cada 24 horas ──────────────────────────
+// Se guarda en Descargas/App Finanzas/Respaldo App Finanzas/ (el navegador crea
+// esa carpeta solo). Esa ruta es del sistema Android, no de Opera: si borras la
+// app o el navegador, esos archivos se quedan en el teléfono.
+const INTERVALO_AUTOBACKUP=24*60*60*1000; // 24 horas
+function hacerAutoBackupSiToca(){
+  try{
+    const ultima=parseInt(localStorage.getItem("fin_last_autobackup")||"0");
+    const ahora=Date.now();
+    if(ahora-ultima<INTERVALO_AUTOBACKUP)return false; // aún no pasan 24h
+    const json=buildBackupJSON();
+    descargarBackupArchivo(rutaArchivoAutoBackup(),json);
+    localStorage.setItem("fin_last_autobackup",String(ahora));
+    return true;
+  }catch(e){return false;}
+}
+let _autoBackupTimer=null;
+function programarAutoBackup(){
+  if(_autoBackupTimer)clearTimeout(_autoBackupTimer);
+  // Espera 4s de inactividad tras el último cambio (para no interrumpir mientras escribes),
+  // y entonces revisa si ya toca el respaldo de las 24h.
+  _autoBackupTimer=setTimeout(hacerAutoBackupSiToca,4000);
+}
 function esStandalone(){
   return (window.navigator.standalone===true)||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
 }
@@ -4300,6 +4395,10 @@ try{renderNotes();}catch(e){}
 try{renderFam();}catch(e){}
 // Inicializar la capa de persistencia (IndexedDB) y auto-recuperar si hace falta
 try{initPersistence();}catch(e){}
+// Revisar respaldo de 24h también al ABRIR la app (por si no tocas nada ese día,
+// igual se genera el respaldo apenas la abres). Con una breve espera para no
+// competir con la carga inicial de la pantalla.
+try{setTimeout(()=>{try{hacerAutoBackupSiToca();}catch(e){}},2500);}catch(e){}
 // ── Modo app en ANDROID ──────────────────────────────────
 // Genera el "manifest" que Android/Chrome necesita para que, al usar
 // "Agregar a pantalla principal", la app abra a PANTALLA COMPLETA
